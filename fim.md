@@ -547,8 +547,8 @@ active_teams = find_active_teams(report, len(report))
 
 # find the doc ids of active team
 def get_activeteams_doc(articles, records):
-    print("articles length:" + str(len(articles)))
-    print("active_teams length:" + str(len(active_teams)))
+    # print("articles length:" + str(len(articles)))
+    # print("active_teams length:" + str(len(active_teams)))
     counter = 0
     docs_of_activeteams = dict()
     for doc_idx, article in enumerate(articles):
@@ -591,6 +591,7 @@ def get_activeteam_topic_changes(team_id, articles, docs_of_activeteams):
 fig, axs = plt.subplots(6,4, figsize=(16, 18), facecolor='w', edgecolor='k')
 # fig.subplots_adjust(hspace = .5, wspace=.001)
 axs = axs.ravel()
+# plt.suptitle('Topic changes of active teams', fontsize=16)
 
 for idx, team_id in enumerate(docs_of_activeteams.keys()):
     axs[idx].set_xlabel('Year')
@@ -602,22 +603,9 @@ for idx, team_id in enumerate(docs_of_activeteams.keys()):
         axs[idx].plot(years, topics, 'o', years, topics, '-')
     #break
 
-plt.suptitle('Topic changes of active teams', fontsize=16)
-    
 # plot_topic_changes(articles, docs_of_activeteams)
 ```
 
-    articles length:27454
-    active_teams length:24
 
-
-
-
-
-    Text(0.5,0.98,'This is a somewhat long figure title')
-
-
-
-
-![png](output_20_2.png)
+![png](output_20_0.png)
 
