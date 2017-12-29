@@ -203,7 +203,7 @@ plt.show()
 from pymining import itemmining
 
 def display_active_teams(active_teams, minimum_author, records):
-    print("{:<28} {:<33}".format('', '表3.1 人数>=1, 合作次数>=5的团队'))
+    print("{:<28} {:<33}".format('', '表3.1 团队人数>=' + str(minimum_author) + ', 合作次数>=5的团队'))
     print("Total number: " + str(len(active_teams)))
     # print('The number of active teams:',len(active_teams))
     # formatly output the active auth, only output 50 items
@@ -332,7 +332,6 @@ corpus, ldamodel = train_ldamodel(articles)
 
 
 ```python
-# ldamodel = train_ldamodel(articles)
 ldamodel.print_topics()
 ldamodel.show_topic(10)
 print("{:<33} {:<33}".format('', '表4.1 20个主题及主题下的关键词'))
@@ -447,8 +446,10 @@ for idx, article in enumerate(articles[:10]):
 (**任务2.2**: 根据自己所定的时间段(五年，三年，两年或是一年)描述团队的构成状况以及其研究主题的变化情况。)
 
 由支持度(support)和置信度(confidence)公式:
+
     - support (X -> Y )= P(X & Y) = X ∪ Y / N
     - confidence (X -> Y )= P(X & Y)/P(X) = X ∪ Y / X
+    
 我们可以得知, 在本应用中置信度小于1.0的关规则, 实际上可以将 X 看做团队基本成员, 将 Y 看做团队变化的成员, 从而就可以观察出团队成员的变化情况.
 
 ### (a.) 团队构成状况的变化
@@ -470,7 +471,6 @@ def find_team_with2(active_teams, minimum_author, records):
             break
 
 # 2. 在二维图上画出团队结构随年份变化的曲线
-
 def plot_teammember_changes(rules, num):
     print("{:<25} {:<35}".format('', '表5.1 团队构成状况变化'))
     print("Total number: " + str(len(rules)))
@@ -525,27 +525,99 @@ plot_teammember_changes(rules, 20)
 ### (b.) 团队研究主题的变化
 由映射`作者<--->文章标题<--->主题`, 我们可以根据文章主题的变化描述出团队研究主题的变化情况.
 
+- 与5(a)节类似, 我们首先根据置信度找出研究主题的变化情况, 再
+
 
 ```python
-# 1. plot the changes of team's topics  
-fig2 = plt.figure(figsize=(20,10))
-def plot_topic_changes(active_author_years, num):
-    ax3 = fig2.add_subplot(122)
-    ax3.set_title('5.1 Active changes')
-    ax3.set_xlim([2006, 2018])
-    years = [2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018]
-    ax3.set_xticks(years)
-    
-    for idx, active_author_years in enumerate(active_author_years.items()):
-        author, years = active_author_years
-        ax3.plot(years, np.ones(len(years)) * idx, 'o', years, np.ones(len(years)) * idx, '-')
-        if (idx > num):
+from operator import itemgetter
+
+# Find the active teams with member >= 3, occurence >= 5
+def find_active_teams(report, records):
+    active_teams = []
+    counter = 0
+    for team in report:
+        if len(team) > 3:
+            active_teams.append([author for author in team])
+            counter += 1
+        if counter > records:
             break
-   
-plot_topic_changes(active_author_years, 10)
-plt.show()
+    return active_teams
+
+active_teams = find_active_teams(report, len(report))
+
+# find the doc ids of active team
+def get_activeteams_doc(articles, records):
+    print("articles length:" + str(len(articles)))
+    print("active_teams length:" + str(len(active_teams)))
+    counter = 0
+    docs_of_activeteams = dict()
+    for doc_idx, article in enumerate(articles):
+        if len(article.authors) > 3:
+            flag = False
+            for team_idx, active_team in enumerate(active_teams):
+                if article.authors < active_team:
+                    # print(article.authors)
+                    if team_idx in docs_of_activeteams:
+                        docs_of_activeteams[team_idx].append(doc_idx)
+                    else:
+                        docs_of_activeteams[team_idx] = [doc_idx]
+        counter += 1
+        if counter > records:
+            break
+    return docs_of_activeteams
+
+# We just get some demonstration docs
+docs_of_activeteams = get_activeteams_doc(articles, 30)
+
+# Get the specified team's topic_ids and corresponding years
+def get_activeteam_topic_changes(team_id, articles, docs_of_activeteams):
+    # print(len(docs_of_activeteams))
+    # for idx, docs_of_activeteam in enumerate(docs_of_activeteams.items()):
+    topic_ids = []
+    years  = []
+    if team_id in docs_of_activeteams:
+        doc_ids = docs_of_activeteams[team_id]
+        for doc_id in doc_ids:
+            doc_year = articles[doc_id].year
+            sorted_doc2topics = sorted(doc2topics[doc_id], key=lambda tup:(-tup[1], tup[0]))
+            # Retrieve the first three topics with maximum probability
+            #if len(sorted_doc2topics) > 5:
+            topic_ids.extend([topic_id for topic_id, prob in sorted_doc2topics])
+            years.extend([doc_year for i in range(len(sorted_doc2topics))])
+        # print(str(topic_ids) + " " + str(years))
+    return topic_ids, years
+
+# Figure preparation
+fig, axs = plt.subplots(6,4, figsize=(16, 18), facecolor='w', edgecolor='k')
+# fig.subplots_adjust(hspace = .5, wspace=.001)
+axs = axs.ravel()
+
+for idx, team_id in enumerate(docs_of_activeteams.keys()):
+    axs[idx].set_xlabel('Year')
+    axs[idx].set_ylabel('Topic Id')
+    axs[idx].set_xlim([2007, 2018])
+    if team_id in docs_of_activeteams:
+        topics, years = get_activeteam_topic_changes(team_id, articles, docs_of_activeteams)
+        # print(str(len(topics)) + " " + str(len(years)))
+        axs[idx].plot(years, topics, 'o', years, topics, '-')
+    #break
+
+plt.suptitle('Topic changes of active teams', fontsize=16)
+    
+# plot_topic_changes(articles, docs_of_activeteams)
 ```
 
+    articles length:27454
+    active_teams length:24
 
-![png](output_20_0.png)
+
+
+
+
+    Text(0.5,0.98,'This is a somewhat long figure title')
+
+
+
+
+![png](output_20_2.png)
 
